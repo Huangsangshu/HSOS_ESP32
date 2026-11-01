@@ -27,12 +27,17 @@ _SCL = const(9)
 _SDA = const(11)
 _TP_FREQ = const(400000)
 
+_BEEP = const(42)
+
 
 def init_display_and_touch():
     acc = machine.Pin(40, machine.Pin.OUT)
     acc.value(1)
     backlight = machine.Pin(8, machine.Pin.OUT)
     backlight.value(1)
+    # 蜂鸣器 BEEP：不使用时必须输出低电平，否则三极管(SS8050)误导通导致短路
+    beep = machine.Pin(_BEEP, machine.Pin.OUT)
+    beep.value(0)
 
     spi_bus = machine.SPI.Bus(
         host=_HOST,
@@ -82,6 +87,7 @@ def init_display_and_touch():
     state.task_handler = task_handler.TaskHandler()
     state.fs_drv = lv.fs_drv_t()
     fs_driver.fs_register(state.fs_drv, 'F')
+    state.touch_indev = indev  # 保存触摸输入设备引用，供息屏时启停触摸
 
     state.display = display
     return display

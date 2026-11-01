@@ -9,6 +9,7 @@ FRONT = None
 btn_boot = None
 btn_home = None
 display = None
+touch_indev = None
 task_handler = None
 fs_drv = None
 

@@ -5,15 +5,11 @@ import lvgl as lv
 import machine
 
 import hardware
-import screens
+import sdcard
 import state
-import timeedit
+import system
 import ui
-from timeutil import restore_saved_time
-
-def shutdown(pin):
-    acc = machine.Pin(40, machine.Pin.OUT)
-    acc.value(0)
+from screens import about, calendar, mainmenu, mainscreen, power, setting, timeset
 
 
 def os_button_pressed(pin):
@@ -22,18 +18,6 @@ def os_button_pressed(pin):
         if time.ticks_diff(now, state.last_boot) > 200:
             state.last_boot = now
             state.need_switch = True
-
-
-def os_sleep(pin):
-    now = time.ticks_ms()
-    if time.ticks_diff(now, state.last_home) > 200:  # 去抖
-        state.last_home = now
-        if not state.issleep:
-            state.issleep = True
-            state.display.set_backlight(0)
-        else:
-            state.issleep = False
-            state.display.set_backlight(75)
 
 
 def boot():
@@ -54,21 +38,23 @@ def boot():
 
     time.sleep(2)
 
-    wdt = machine.WDT(timeout=10000)
     state.btn_boot.irq(trigger=machine.Pin.IRQ_FALLING, handler=os_button_pressed)
-    state.btn_home.irq(trigger=machine.Pin.IRQ_FALLING, handler=os_sleep)
+    state.btn_home.irq(trigger=machine.Pin.IRQ_FALLING, handler=system.os_sleep)
 
     # 恢复离线保存的时间（若有）
-    restore_saved_time()
+    system.restore_saved_time()
+
+    # 初始化外置 SD 卡（失败不影响系统启动）
+    sdcard.init_sd()
 
     # 预构建所有页面
-    screens.build_mainscreen()
-    screens.build_mainmenu()
-    screens.build_calendar()
-    screens.build_setting()
-    timeedit.build_timeset()
-    screens.build_about()
-    screens.build_set_shutdown()
+    mainscreen.build_mainscreen()
+    mainmenu.build_mainmenu()
+    calendar.build_calendar()
+    setting.build_setting()
+    timeset.build_timeset()
+    about.build_about()
+    power.build_power()
 
     state.screen_state = "MAINSCREEN"
     lv.screen_load(state.scr_mainscreen)
@@ -84,7 +70,7 @@ def boot():
             elif state.screen_state == "MAINMENU":
                 lv.screen_load(state.scr_mainscreen)
                 state.screen_state = "MAINSCREEN"
-            elif state.screen_state in ("SETTIME","ABOUT","POWER"):
+            elif state.screen_state in ("SETTIME", "ABOUT", "POWER"):
                 lv.screen_load(state.scr_setting)
                 state.screen_state = "SETTING"
 
@@ -106,4 +92,3 @@ def boot():
                 ui.os_update_small_clock(state.obj_powerclock)
 
         time.sleep_ms(5)
-        wdt.feed()
